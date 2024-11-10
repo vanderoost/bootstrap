@@ -5,7 +5,7 @@
 
 # Settings
 HOSTNAME="mb-pro"
-GITHUB_USERNAME="richardvdoost"
+GITHUB_USERNAME="vanderoost"
 BOOTSTRAP_REPO_NAME="bootstrap"
 
 SSH_DIR="$HOME/.ssh"
