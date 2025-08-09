@@ -1,4 +1,4 @@
-/Applications/iTerm.app
+/Applications/Ghostty.app
 /System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app
 /System/Applications/Messages.app
 /System/Applications/Mail.app
