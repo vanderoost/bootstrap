@@ -1,5 +1,1 @@
 home
-mindnode-parser
-screencast
-spotify-automation
-clik-pipeline

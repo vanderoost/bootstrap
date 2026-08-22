@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Set up preferences
 
 # Prerequisites:
 # $XDG_CONFIG_HOME set
 # Dotfiles installed
-# iTerm2 installed
 
 GIT_DIR="$HOME/git"
 BOOTSTRAP_REPO_NAME="bootstrap"
@@ -73,7 +72,7 @@ defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadTwoFin
 defaults write com.apple.AppleMultitouchTrackpad FirstClickThreshold -int 0
 defaults write com.apple.AppleMultitouchTrackpad SecondClickThreshold -int 0
 
-# Increase trackpad speed (0.0 - 3.0 is normal range)
+# Increase trackpad speed (0.0 - 3.0 is the normal range)
 defaults write -globalDomain com.apple.trackpad.scaling -float 5.0
 
 # Move spaces when opening an App
@@ -87,10 +86,10 @@ defaults write com.apple.finder NewWindowTargetPath -string "file://$HOME"
 # Remove items from the trash after 30 days
 defaults write com.apple.finder FXRemoveOldTrashItems -bool true
 
-# Save screenshots to Downloads
+# Save screenshots to Downloads to keep the Desktop clean
 defaults write com.apple.screencapture location -string "$HOME/Downloads"
 
-# When performing a search, search the current folder by default
+# When doing a search, search the current folder by default
 defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
 
 # Disable the warning when changing a file extension
@@ -103,7 +102,7 @@ defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
 # Show the status bar in Finder
 defaults write com.apple.finder ShowStatusBar -bool true
 
-# Show folders on top
+# Show folders at the top
 defaults write com.apple.finder _FXSortFoldersFirst -bool true
 
 
@@ -116,7 +115,3 @@ defaults write com.apple.TextEdit RichText -bool false
 defaults write com.apple.safari IncludeDevelopMenu -bool true
 defaults write com.apple.safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
 defaults write com.apple.safari com.apple.safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
-
-# Tell iTerm2 to use the custom preferences in the directory
-defaults write com.googlecode.iterm2.plist PrefsCustomFolder -string "$XDG_CONFIG_HOME/iterm2"
-defaults write com.googlecode.iterm2.plist LoadPrefsFromCustomFolder -bool true

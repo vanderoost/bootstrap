@@ -1,11 +1,15 @@
 # Bootstrap
 
-Set up a new mac from scratch.
+Automatically configure a new Mac from scratch.
 
-This script is an attempt to automate as many of the "new Mac setup activities" as possible.
-
-## Run the installer
+## TL;DR Run the installer
 
 ```
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vanderoost/bootstrap/main/install.sh)"
 ```
+
+## Customization
+
+I recommend customizing the following files to your own needs:
+
+- Brewfile

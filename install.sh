@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script can run from a curl one-liner, will clone the rest of
 # the repo into a proper location
