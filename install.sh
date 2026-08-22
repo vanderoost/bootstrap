@@ -53,15 +53,31 @@ green_echo "STARTING MAC BOOTSTRAP SCRIPT"
 echo "This script will set up command line tools, ssh, git, install all Homebrew"
 echo "packages from the Brewfile, set up the Mac preferences and App preferences."
 
-# Ask password upfront and keep alive
-# https://github.com/joshukraine/mac-bootstrap/blob/master/bootstrap#L88
+# Ask for the password upfront and hold on to it for the whole run
 echo
 sudo -v
-while :; do
-    sudo -n true
-    caffeinate -u sleep 60
-    kill -0 "$$" || exit
-done 2>/dev/null &
+
+# One assertion for the entire script: `caffeinate -u` only lasts five
+# seconds, so the Mac could idle sleep and let the sudo ticket lapse
+caffeinate -dims -w "$$" &
+CAFFEINATE_PID=$!
+
+# `sudo -n -v` refreshes the ticket but can never re-authenticate, so one
+# failed refresh must not take the loop down with it, as `set -e` would
+(
+    set +e
+    while kill -0 "$$" 2> /dev/null; do
+        sudo -n -v 2> /dev/null
+        sleep 30
+    done
+) &
+SUDO_KEEPALIVE_PID=$!
+
+release_keepalive() {
+    kill "$SUDO_KEEPALIVE_PID" "$CAFFEINATE_PID" 2> /dev/null
+    return 0
+}
+trap release_keepalive EXIT
 
 # green_echo "INSTALL ALL AVAILABLE UPDATES"
 # sudo softwareupdate -ia --verbose
