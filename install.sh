@@ -199,6 +199,7 @@ else
 fi
 
 green_echo "INSTALLING ALL HOMEBREW PACKAGES"
+brew trust --formula koekeishiya/formulae/skhd
 brew bundle --no-upgrade --file "$BOOTSTRAP_DIR/Brewfile"
 brew cleanup
 
