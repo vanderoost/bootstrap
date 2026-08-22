@@ -17,6 +17,7 @@ ALLOWED_SIGNERS_FILE="$SSH_DIR/allowed_signers"
 GH_KEY_SCOPES="admin:public_key,admin:ssh_signing_key"
 GIT_DIR="$HOME/git"
 BOOTSTRAP_DIR="$GIT_DIR/$BOOTSTRAP_REPO_NAME"
+SUDOERS_FILE="/etc/sudoers.d/bootstrap-nopasswd"
 
 set -eu
 
@@ -57,14 +58,71 @@ echo "packages from the Brewfile, set up the Mac preferences and App preferences
 echo
 sudo -v
 
+CAFFEINATE_PID=""
+SUDO_KEEPALIVE_PID=""
+SUDOERS_INSTALLED=""
+
+# A refreshed sudo ticket is not enough: Homebrew still prompts partway
+# through the Brewfile, so grant this user passwordless sudo instead
+install_passwordless_sudo() {
+    local tmp
+    tmp="$(mktemp)"
+    printf '%s ALL=(ALL) NOPASSWD: ALL\n' "$(id -un)" > "$tmp"
+
+    # An unparseable drop-in breaks every sudo on the machine, so only
+    # ever install one that visudo has already accepted
+    if ! visudo -c -q -f "$tmp"; then
+        rm -f "$tmp"
+        abort "Refusing to install an unparseable sudoers rule"
+    fi
+
+    # Claim it before creating it, so a half-written file still gets
+    # cleaned up if `install` fails partway through
+    SUDOERS_INSTALLED="yes"
+    sudo install -m 0440 -o root -g wheel "$tmp" "$SUDOERS_FILE"
+    rm -f "$tmp"
+}
+
+# The rule is meant to outlive nothing: give it back however we exit
+release_privileges() {
+    if [ -n "$SUDOERS_INSTALLED" ]; then
+        SUDOERS_INSTALLED=""
+        sudo -n rm -f "$SUDOERS_FILE" 2> /dev/null \
+            || echo "WARNING: please remove $SUDOERS_FILE by hand" >&2
+    fi
+    [ -n "$SUDO_KEEPALIVE_PID" ] && kill "$SUDO_KEEPALIVE_PID" 2> /dev/null
+    [ -n "$CAFFEINATE_PID" ] && kill "$CAFFEINATE_PID" 2> /dev/null
+    return 0
+}
+trap release_privileges EXIT
+# Without these, a Ctrl-C would leave the sudoers rule behind
+trap 'exit 1' INT TERM
+
+if [ -f "$SUDOERS_FILE" ]; then
+    echo "Replacing the rule an interrupted run left behind"
+fi
+install_passwordless_sudo
+
+# A drop-in is silently ignored unless /etc/sudoers includes the
+# directory, and dropping the ticket is the only way to tell it took
+sudo -k
+if ! sudo -n true 2> /dev/null; then
+    echo "WARNING: /etc/sudoers.d is not read, expect password prompts" >&2
+    sudo rm -f "$SUDOERS_FILE"
+    SUDOERS_INSTALLED=""
+    sudo -v
+fi
+
 # One assertion for the entire script: `caffeinate -u` only lasts five
 # seconds, so the Mac could idle sleep and let the sudo ticket lapse
 caffeinate -dims -w "$$" &
 CAFFEINATE_PID=$!
 
-# `sudo -n -v` refreshes the ticket but can never re-authenticate, so one
-# failed refresh must not take the loop down with it, as `set -e` would
+# Only a backstop for the warning above, but a cheap one. `sudo -n -v`
+# refreshes the ticket and can never re-authenticate, so one failed
+# refresh must not take the loop down with it, as `set -e` would
 (
+    trap - EXIT INT TERM
     set +e
     while kill -0 "$$" 2> /dev/null; do
         sudo -n -v 2> /dev/null
@@ -72,12 +130,6 @@ CAFFEINATE_PID=$!
     done
 ) &
 SUDO_KEEPALIVE_PID=$!
-
-release_keepalive() {
-    kill "$SUDO_KEEPALIVE_PID" "$CAFFEINATE_PID" 2> /dev/null
-    return 0
-}
-trap release_keepalive EXIT
 
 # green_echo "INSTALL ALL AVAILABLE UPDATES"
 # sudo softwareupdate -ia --verbose
