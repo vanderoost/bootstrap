@@ -98,9 +98,7 @@ else
 	echo "All good"
 fi
 
-# Install Homebrew Bundle
-green_echo "INSTALL HOMEBREW BUNDLE"
-brew tap Homebrew/bundle
+green_echo "UPDATE HOMEBREW"
 brew update
 brew upgrade
 
