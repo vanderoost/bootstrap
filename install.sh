@@ -8,7 +8,13 @@ HOSTNAME="mb-pro"
 GITHUB_USERNAME="vanderoost"
 BOOTSTRAP_REPO_NAME="bootstrap"
 
+GIT_NAME="Richard van der Oost"
+GIT_EMAIL="richard@vanderoost.com"
+
 SSH_DIR="$HOME/.ssh"
+SSH_KEY_FILE="$SSH_DIR/id_ed25519"
+ALLOWED_SIGNERS_FILE="$SSH_DIR/allowed_signers"
+GH_KEY_SCOPES="admin:public_key,admin:ssh_signing_key"
 GIT_DIR="$HOME/git"
 BOOTSTRAP_DIR="$GIT_DIR/$BOOTSTRAP_REPO_NAME"
 
@@ -22,6 +28,19 @@ green_echo()(echo; echo -e "==> ${GREEN}$1${NC}")
 abort() {
   printf "%s\n" "$@" >&2
   exit 1
+}
+
+# Registering a key twice is not an error, so re-runs stay safe
+add_github_key() {
+    local key_type="$1" output
+    if output=$(gh ssh-key add "$SSH_KEY_FILE.pub" --title "$HOSTNAME" \
+        --type "$key_type" 2>&1); then
+        echo "Added the $key_type key"
+    elif echo "$output" | grep -qi 'already'; then
+        echo "The $key_type key is already registered"
+    else
+        abort "$output"
+    fi
 }
 
 # Fail when not using bash
@@ -62,39 +81,8 @@ fi
 # Set the computer hostname
 sudo scutil --set HostName $HOSTNAME
 
-mkdir -p "$SSH_DIR"
-
-green_echo "CHECKING SSH KEY PAIR"
-ID_RSA_FILE="$SSH_DIR/id_rsa"
-if [ ! -f "$ID_RSA_FILE" ]; then
-    echo "Creating a new SSH key pair"
-	ssh-keygen -t rsa -b 4096 -f "$ID_RSA_FILE" -q -N ""
-else
-    echo "All good"
-fi
-
 # Turn on SSH into this machine
 sudo systemsetup -setremotelogin on
-
-green_echo "CHECKING GITHUB SSH HOST"
-if ! grep 'github.com ssh-rsa' "$SSH_DIR/known_hosts" &> /dev/null; then
-    echo "Adding github.com rsa fingerprint to $SSH_DIR/known_hosts"
-    ssh-keyscan -t rsa "github.com" >> "$SSH_DIR/known_hosts"
-else
-    echo "All good"
-fi
-
-green_echo "CHECKING GITHUB SSH ACCESS"
-if ! ssh -T git@github.com 2>&1 | grep 'success' &> /dev/null; then
-	GITHUB_SSH=false
-	echo "No access, SSH key needs to be set up at github.com"
-	pbcopy < "$ID_RSA_FILE.pub"
-	open "https://github.com/settings/ssh/new"
-	say "Log into Github and paste the public SSH key please"
-else
-	GITHUB_SSH=true
-	echo "All good"
-fi
 
 green_echo "CHECK HOMEBREW STATUS"
 if ! command -v brew &> /dev/null; then
@@ -116,16 +104,86 @@ brew tap Homebrew/bundle
 brew update
 brew upgrade
 
-# Wait until Github SSH is working
-if ! $GITHUB_SSH; then
-	green_echo "VERIFYING GITHUB SSH ACCESS"
-	while :; do
-		ssh -T git@github.com 2>&1 | grep 'success' &> /dev/null && break
-		echo -n .
-		sleep 10
-	done
-	echo
+# The GitHub CLI sets up SSH access below, long before the Brewfile is available
+green_echo "CHECK GITHUB CLI STATUS"
+if ! command -v gh &> /dev/null; then
+	echo "Installing the GitHub CLI..."
+	brew install gh
+else
+	echo "All good"
 fi
+
+mkdir -p "$SSH_DIR"
+
+green_echo "CHECKING SSH KEY PAIR"
+if [ ! -f "$SSH_KEY_FILE" ]; then
+    echo "Creating a new Ed25519 SSH key pair"
+    ssh-keygen -t ed25519 -f "$SSH_KEY_FILE" -q -N "" -C "$USER@$HOSTNAME"
+else
+    echo "All good"
+fi
+
+green_echo "CHECKING GITHUB CLI AUTHENTICATION"
+if ! gh auth status --hostname github.com &> /dev/null; then
+    # Ask for the key scopes up front so a fresh Mac needs one login, not two
+    echo "Logging in to GitHub"
+    gh auth login --hostname github.com --git-protocol ssh --web \
+        --skip-ssh-key --scopes "$GH_KEY_SCOPES"
+else
+    echo "All good"
+fi
+
+green_echo "CHECKING GITHUB SSH HOST KEYS"
+if ! ssh-keygen -F "github.com" -f "$SSH_DIR/known_hosts" &> /dev/null; then
+    echo "Adding GitHub's host keys to $SSH_DIR/known_hosts"
+    gh api meta --jq '.ssh_keys[]' \
+        | sed 's/^/github.com /' >> "$SSH_DIR/known_hosts"
+else
+    echo "All good"
+fi
+
+green_echo "CHECKING GITHUB SSH ACCESS"
+# Probe this specific key: an older key may still work while this one is unknown
+if ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_KEY_FILE" \
+    -T git@github.com 2>&1 | grep -q 'success'; then
+    echo "All good"
+else
+    echo "Registering this machine's public key with GitHub"
+
+    # Only needed when we were already logged in with the default scopes
+    if ! gh auth status --hostname github.com 2>&1 | grep -q "'admin:public_key'"
+    then
+        gh auth refresh --hostname github.com --scopes "$GH_KEY_SCOPES"
+    fi
+
+    add_github_key authentication
+    add_github_key signing
+
+    # Key management is a privilege escalation, keep it off the daily token
+    echo "Dropping the key-management scopes again"
+    gh auth refresh --hostname github.com --remove-scopes "$GH_KEY_SCOPES"
+
+    ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_KEY_FILE" \
+        -T git@github.com 2>&1 | grep -q 'success' \
+        || abort "SSH access to github.com is still not working."
+fi
+
+green_echo "CONFIGURING GIT SIGNING"
+if ! git config --global --get user.email > /dev/null; then
+    git config --global user.name "$GIT_NAME"
+    git config --global user.email "$GIT_EMAIL"
+fi
+git config --global gpg.format ssh
+git config --global user.signingkey "$SSH_KEY_FILE.pub"
+git config --global commit.gpgsign true
+git config --global gpg.ssh.allowedSignersFile "$ALLOWED_SIGNERS_FILE"
+
+# Without this, `git log --show-signature` cannot verify our own commits
+SIGNER_LINE="$GIT_EMAIL namespaces=\"git\" $(cat "$SSH_KEY_FILE.pub")"
+if ! grep -qxF "$SIGNER_LINE" "$ALLOWED_SIGNERS_FILE" 2> /dev/null; then
+    echo "$SIGNER_LINE" >> "$ALLOWED_SIGNERS_FILE"
+fi
+echo "All good"
 
 green_echo "ENSURE BOOTSTRAP REPOSITORY IS PULLED AND UPDATED"
 mkdir -p "$GIT_DIR"
