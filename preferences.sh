@@ -110,8 +110,3 @@ defaults write com.apple.finder _FXSortFoldersFirst -bool true
 
 # Use plain text for TextEdit app
 defaults write com.apple.TextEdit RichText -bool false
-
-# Enable the Develop menu and the Web Inspector in Safari (doesn't work anymore?)
-defaults write com.apple.safari IncludeDevelopMenu -bool true
-defaults write com.apple.safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
-defaults write com.apple.safari com.apple.safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
