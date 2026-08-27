@@ -4,13 +4,13 @@
 # the repo into a proper location
 
 # Settings
-HOSTNAME="mb-pro"
 GITHUB_USERNAME="vanderoost"
 BOOTSTRAP_REPO_NAME="bootstrap"
 
 GIT_NAME="Richard van der Oost"
 GIT_EMAIL="richard@vanderoost.com"
 
+USE_SSH=1
 SSH_DIR="$HOME/.ssh"
 SSH_KEY_FILE="$SSH_DIR/id_ed25519"
 ALLOWED_SIGNERS_FILE="$SSH_DIR/allowed_signers"
@@ -54,8 +54,14 @@ green_echo "STARTING MAC BOOTSTRAP SCRIPT"
 echo "This script will set up command line tools, ssh, git, install all Homebrew"
 echo "packages from the Brewfile, set up the Mac preferences and App preferences."
 
+# Ask up front, before the sudo/caffeinate machinery kicks in. Read from
+# /dev/tty since stdin is the script itself when run via `curl | bash`
+CURRENT_HOSTNAME="$(scutil --get ComputerName 2> /dev/null || hostname -s)"
+read -r -p "Enter this Mac's hostname [$CURRENT_HOSTNAME]: " HOSTNAME < /dev/tty
+HOSTNAME="${HOSTNAME:-$CURRENT_HOSTNAME}"
+
 # Ask for the password upfront and hold on to it for the whole run
-echo
+echo "Your password is required for some admin work"
 sudo -v
 
 CAFFEINATE_PID=""
@@ -150,8 +156,16 @@ fi
 # Set the computer hostname
 sudo scutil --set HostName $HOSTNAME
 
-# Turn on SSH into this machine
-sudo systemsetup -setremotelogin on
+# Turn on Remote Login (incoming SSH) if requested. `systemsetup
+# -setremotelogin` requires Terminal to already have Full Disk Access,
+# which a one-liner curl script can't grant itself — toggle the
+# launchd service directly instead, which needs sudo but not FDA
+if [ "$USE_SSH" = "1" ]; then
+    sudo launchctl enable system/com.openssh.sshd
+    if ! sudo launchctl print system/com.openssh.sshd &> /dev/null; then
+        sudo launchctl bootstrap system /System/Library/LaunchDaemons/ssh.plist
+    fi
+fi
 
 green_echo "CHECK HOMEBREW STATUS"
 if ! command -v brew &> /dev/null; then
@@ -169,7 +183,7 @@ fi
 
 green_echo "UPDATE HOMEBREW"
 brew update
-brew upgrade
+brew upgrade --yes
 
 # The GitHub CLI sets up SSH access below, long before the Brewfile is available
 green_echo "CHECK GITHUB CLI STATUS"
@@ -298,6 +312,10 @@ while read -r repo; do
         cd $HOME
     fi
 done < "$BOOTSTRAP_DIR/github-repos.txt"
+
+green_echo "INITIALIZING DROPBOX"
+open -a Dropbox
+read -r -p "Press enter once you've signed in to Dropbox... " _ < /dev/tty
 
 green_echo "DOWNLOADING AND INSTALLING DOTFILE CONFIGS"
 cd "$GIT_DIR/home"

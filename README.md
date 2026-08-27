@@ -4,9 +4,6 @@ Automatically configure a new Mac from scratch.
 
 ## TL;DR Run the installer
 
-Before running this command, make sure the terminal program has **Full Disk Access** in
-System Settings -> Privacy & Security.
-
 ```
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vanderoost/bootstrap/main/install.sh)"
 ```
@@ -29,3 +26,5 @@ replaces and then removes it, or delete it by hand.
 I recommend customizing the following files to your own needs:
 
 - Brewfile
+- `install.sh`'s `USE_SSH` setting — turns Remote Login (incoming SSH) on or off;
+  defaults to on
