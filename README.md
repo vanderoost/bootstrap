@@ -1,6 +1,6 @@
 # Bootstrap
 
-Automatically configure a new Mac from scratch.
+Automatically set up a new Mac from scratch.
 
 ## TL;DR Run the installer
 
