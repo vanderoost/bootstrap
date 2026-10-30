@@ -54,6 +54,7 @@ cask "transmission"
 
 mas "Adblock Plus", id: 1432731683
 mas "Bitwarden", id: 1352778147
+mas "Keystroke Pro", id: 1572206224
 mas "MindNode", id: 1289197285
 mas "Telegram", id: 747648890
 mas "The Unarchiver", id: 425424353
