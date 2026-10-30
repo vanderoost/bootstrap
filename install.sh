@@ -31,7 +31,6 @@ abort() {
   exit 1
 }
 
-# Registering a key twice is not an error, so re-runs stay safe
 add_github_key() {
     local key_type="$1" output
     if output=$(gh ssh-key add "$SSH_KEY_FILE.pub" --title "$HOSTNAME" \
@@ -54,13 +53,11 @@ green_echo "STARTING MAC BOOTSTRAP SCRIPT"
 echo "This script will set up command line tools, ssh, git, install all Homebrew"
 echo "packages from the Brewfile, set up the Mac preferences and App preferences."
 
-# Ask up front, before the sudo/caffeinate machinery kicks in. Read from
-# /dev/tty since stdin is the script itself when run via `curl | bash`
 CURRENT_HOSTNAME="$(scutil --get ComputerName 2> /dev/null || hostname -s)"
 read -r -p "Enter this Mac's hostname [$CURRENT_HOSTNAME]: " HOSTNAME < /dev/tty
 HOSTNAME="${HOSTNAME:-$CURRENT_HOSTNAME}"
 
-# Ask for the password upfront and hold on to it for the whole run
+# Ask for the password upfront
 echo "Your password is required for some admin work"
 sudo -v
 
@@ -68,29 +65,21 @@ CAFFEINATE_PID=""
 SUDO_KEEPALIVE_PID=""
 SUDOERS_INSTALLED=""
 
-# A refreshed sudo ticket is not enough: Homebrew casks and the dotfile
-# symlinks into /usr/local/bin still prompt partway through the run, so
-# grant this user passwordless sudo for the duration instead
 install_passwordless_sudo() {
     local tmp
     tmp="$(mktemp)"
     printf '%s ALL=(ALL) NOPASSWD: ALL\n' "$(id -un)" > "$tmp"
 
-    # An unparseable drop-in breaks every sudo on the machine, so only
-    # ever install one that visudo has already accepted
     if ! visudo -c -q -f "$tmp"; then
         rm -f "$tmp"
         abort "Refusing to install an unparseable sudoers rule"
     fi
 
-    # Claim it before creating it, so a half-written file still gets
-    # cleaned up if `install` fails partway through
     SUDOERS_INSTALLED="yes"
     sudo install -m 0440 -o root -g wheel "$tmp" "$SUDOERS_FILE"
     rm -f "$tmp"
 }
 
-# The rule is meant to outlive nothing: give it back however we exit
 release_privileges() {
     if [ -n "$SUDOERS_INSTALLED" ]; then
         SUDOERS_INSTALLED=""
@@ -102,7 +91,6 @@ release_privileges() {
     return 0
 }
 trap release_privileges EXIT
-# Without these, a Ctrl-C would leave the sudoers rule behind
 trap 'exit 1' INT TERM
 
 if [ -f "$SUDOERS_FILE" ]; then
@@ -110,8 +98,6 @@ if [ -f "$SUDOERS_FILE" ]; then
 fi
 install_passwordless_sudo
 
-# A drop-in is silently ignored unless /etc/sudoers includes the
-# directory, and dropping the ticket is the only way to tell it took
 sudo -k
 if ! sudo -n true 2> /dev/null; then
     echo "WARNING: /etc/sudoers.d is not read, expect password prompts" >&2
@@ -120,8 +106,7 @@ if ! sudo -n true 2> /dev/null; then
     sudo -v
 fi
 
-# One assertion for the entire script: `caffeinate -u` only lasts five
-# seconds, so the Mac could idle sleep and let the sudo ticket lapse
+# Stay awake the whole run
 caffeinate -dims -w "$$" &
 CAFFEINATE_PID=$!
 
@@ -138,20 +123,15 @@ CAFFEINATE_PID=$!
 ) &
 SUDO_KEEPALIVE_PID=$!
 
-# green_echo "INSTALL ALL AVAILABLE UPDATES"
-# sudo softwareupdate -ia --verbose
+green_echo "INSTALL ALL AVAILABLE UPDATES"
+sudo softwareupdate -ia --verbose
 
-# Set all three names, otherwise Finder, Bonjour and the shell prompt
-# each keep showing the factory one. LocalHostName must be DNS-safe
 sudo scutil --set ComputerName "$HOSTNAME"
 sudo scutil --set HostName "$HOSTNAME"
 sudo scutil --set LocalHostName "$(echo "$HOSTNAME" \
     | sed -e 's/[^A-Za-z0-9-]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-$//')"
 
-# Turn on Remote Login (incoming SSH) if requested. `systemsetup
-# -setremotelogin` requires Terminal to already have Full Disk Access,
-# which a one-liner curl script can't grant itself — toggle the
-# launchd service directly instead, which needs sudo but not FDA
+# Turn on Remote Login (incoming SSH) if requested
 if [ "$USE_SSH" = "1" ]; then
     sudo launchctl enable system/com.openssh.sshd
     if ! sudo launchctl print system/com.openssh.sshd &> /dev/null; then
@@ -160,10 +140,7 @@ if [ "$USE_SSH" = "1" ]; then
 fi
 
 green_echo "CHECK HOMEBREW STATUS"
-# Check the file, not the PATH: a terminal opened before the first run
-# never picked up Homebrew's /etc/paths.d entry
 if [ ! -x /opt/homebrew/bin/brew ]; then
-	# The installer also takes care of the Xcode command line tools
 	echo "Installing Homebrew..."
 	NONINTERACTIVE=1 /bin/bash -c \
         "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -176,7 +153,6 @@ green_echo "UPDATE HOMEBREW"
 brew update
 brew upgrade --yes
 
-# The GitHub CLI sets up SSH access below, long before the Brewfile is available
 green_echo "CHECK GITHUB CLI STATUS"
 if ! command -v gh &> /dev/null; then
 	echo "Installing the GitHub CLI..."
@@ -215,7 +191,6 @@ else
 fi
 
 green_echo "CHECKING GITHUB SSH ACCESS"
-# Probe this specific key: an older key may still work while this one is unknown
 if ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_KEY_FILE" \
     -T git@github.com 2>&1 | grep -q 'success'; then
     echo "All good"
@@ -250,7 +225,6 @@ git config --global user.signingkey "$SSH_KEY_FILE.pub"
 git config --global commit.gpgsign true
 git config --global gpg.ssh.allowedSignersFile "$ALLOWED_SIGNERS_FILE"
 
-# Without this, `git log --show-signature` cannot verify our own commits
 SIGNER_LINE="$GIT_EMAIL namespaces=\"git\" $(cat "$SSH_KEY_FILE.pub")"
 if ! grep -qxF "$SIGNER_LINE" "$ALLOWED_SIGNERS_FILE" 2> /dev/null; then
     echo "$SIGNER_LINE" >> "$ALLOWED_SIGNERS_FILE"
@@ -282,7 +256,6 @@ if brew bundle check --verbose --file "$BOOTSTRAP_DIR/Brewfile" 2> /dev/null \
     read -r -p "Press enter once you've signed in to the App Store... " _ < /dev/tty
 fi
 
-# One discontinued cask must not stop the rest of the setup
 BUNDLE_FAILED=""
 if ! brew bundle --no-upgrade --file "$BOOTSTRAP_DIR/Brewfile"; then
     BUNDLE_FAILED="yes"
@@ -325,9 +298,13 @@ cd "$GIT_DIR/home"
 ./install.sh
 cd "$HOME"
 
+green_echo "STARTING SKHD"
+skhd --start-service
+
 green_echo "ALL DONE"
 if [ -n "$BUNDLE_FAILED" ]; then
     echo "WARNING: some Brewfile entries failed to install, see the output above," >&2
     echo "then run: brew bundle --file $BOOTSTRAP_DIR/Brewfile" >&2
 fi
 echo "Restart the Mac to load the audio driver and the key remapping"
+echo "Give skhd Accessibility access in System Settings > Privacy & Security"

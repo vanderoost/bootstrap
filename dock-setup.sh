@@ -41,4 +41,7 @@ defaults write com.apple.dock "autohide-time-modifier" -float "0.4"
 # Don't auto-rearrange spaces (also a dock option for some reason)
 defaults write com.apple.dock "mru-spaces" -bool "false"
 
+# Switch to a Space with open windows for the app when activating it
+defaults write com.apple.dock "workspaces-auto-swoosh" -bool "true"
+
 killall Dock

@@ -7,5 +7,4 @@
 /System/Applications/Notes.app
 /Applications/MindNode Classic.app
 /System/Applications/Podcasts.app
-/Applications/Spotify.app
 /Applications/Blender.app

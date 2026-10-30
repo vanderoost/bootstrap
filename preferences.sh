@@ -34,9 +34,6 @@ defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
 # Show all file extensions
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 
-# Disable auto switching Workspaces?
-defaults write com.apple.dock workspaces-auto-swoosh -bool true
-
 # Set a blazingly fast keyboard repeat rate
 defaults write NSGlobalDomain InitialKeyRepeat -int 10
 defaults write NSGlobalDomain KeyRepeat -int 1
@@ -108,8 +105,22 @@ defaults write com.apple.finder ShowStatusBar -bool true
 # Show folders at the top
 defaults write com.apple.finder _FXSortFoldersFirst -bool true
 
+# Hide widgets
+defaults write com.apple.WindowManager StandardHideWidgets -bool true
+defaults write com.apple.WindowManager StageManagerHideWidgets -bool true
+
 
 # APP PREFERENCES
 
 # Use plain text for TextEdit app
-defaults write com.apple.TextEdit RichText -bool false
+if ! defaults write com.apple.TextEdit RichText -bool false 2> /dev/null; then
+    echo "WARNING: could not set TextEdit to plain text, the terminal needs" >&2
+    echo "Full Disk Access (System Settings > Privacy & Security)" >&2
+fi
+
+
+# APPLY
+
+for app in Finder SystemUIServer WindowManager; do
+    killall "$app" 2> /dev/null
+done
