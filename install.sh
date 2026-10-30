@@ -141,20 +141,12 @@ SUDO_KEEPALIVE_PID=$!
 # green_echo "INSTALL ALL AVAILABLE UPDATES"
 # sudo softwareupdate -ia --verbose
 
-# Install Xcode command line tools
-if ! $(xcode-select -p &>/dev/null); then
-    xcode-select --install &>/dev/null
-    # Wait until the Xcode command line tools are installed
-    until $(xcode-select -p &>/dev/null); do
-        sleep 5
-    done
-
-    # Enable command line tools
-    sudo xcode-select --switch /Library/Developer/CommandLineTools
-fi
-
-# Set the computer hostname
-sudo scutil --set HostName $HOSTNAME
+# Set all three names, otherwise Finder, Bonjour and the shell prompt
+# each keep showing the factory one. LocalHostName must be DNS-safe
+sudo scutil --set ComputerName "$HOSTNAME"
+sudo scutil --set HostName "$HOSTNAME"
+sudo scutil --set LocalHostName "$(echo "$HOSTNAME" \
+    | sed -e 's/[^A-Za-z0-9-]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-$//')"
 
 # Turn on Remote Login (incoming SSH) if requested. `systemsetup
 # -setremotelogin` requires Terminal to already have Full Disk Access,
@@ -168,18 +160,17 @@ if [ "$USE_SSH" = "1" ]; then
 fi
 
 green_echo "CHECK HOMEBREW STATUS"
-if ! command -v brew &> /dev/null; then
+# Check the file, not the PATH: a terminal opened before the first run
+# never picked up Homebrew's /etc/paths.d entry
+if [ ! -x /opt/homebrew/bin/brew ]; then
+	# The installer also takes care of the Xcode command line tools
 	echo "Installing Homebrew..."
 	NONINTERACTIVE=1 /bin/bash -c \
         "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-	# Add Brew to the path
-	if ! command -v brew &> /dev/null; then
-		eval "$(/opt/homebrew/bin/brew shellenv)"
-	fi
 else
 	echo "All good"
 fi
+eval "$(/opt/homebrew/bin/brew shellenv)"
 
 green_echo "UPDATE HOMEBREW"
 brew update
@@ -282,8 +273,20 @@ else
 fi
 
 green_echo "INSTALLING ALL HOMEBREW PACKAGES"
-brew trust --formula koekeishiya/formulae/skhd
-brew bundle --no-upgrade --file "$BOOTSTRAP_DIR/Brewfile"
+brew trust --formula asmvik/formulae/skhd
+
+# mas can no longer sign in by itself, the App Store app has to do it
+if brew bundle check --verbose --file "$BOOTSTRAP_DIR/Brewfile" 2> /dev/null \
+    | grep -q '→ App '; then
+    open -a "App Store"
+    read -r -p "Press enter once you've signed in to the App Store... " _ < /dev/tty
+fi
+
+# One discontinued cask must not stop the rest of the setup
+BUNDLE_FAILED=""
+if ! brew bundle --no-upgrade --file "$BOOTSTRAP_DIR/Brewfile"; then
+    BUNDLE_FAILED="yes"
+fi
 brew cleanup
 
 # Pin Neovim so it doesn't randomly break
@@ -323,3 +326,8 @@ cd "$GIT_DIR/home"
 cd "$HOME"
 
 green_echo "ALL DONE"
+if [ -n "$BUNDLE_FAILED" ]; then
+    echo "WARNING: some Brewfile entries failed to install, see the output above," >&2
+    echo "then run: brew bundle --file $BOOTSTRAP_DIR/Brewfile" >&2
+fi
+echo "Restart the Mac to load the audio driver and the key remapping"

@@ -1,11 +1,11 @@
 /Applications/Ghostty.app
-/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app
+/Applications/Safari.app
 /System/Applications/Messages.app
 /System/Applications/Mail.app
 /System/Applications/Calendar.app
 /System/Applications/Reminders.app
 /System/Applications/Notes.app
-/Applications/MindNode.app
+/Applications/MindNode Classic.app
 /System/Applications/Podcasts.app
 /Applications/Spotify.app
 /Applications/Blender.app

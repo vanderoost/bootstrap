@@ -16,6 +16,12 @@ mkdir -p "$HOME/Library/LaunchAgents"
 cp "$GIT_DIR/$BOOTSTRAP_REPO_NAME/com.local.KeyRemapping.plist" \
     "$HOME/Library/LaunchAgents/com.local.KeyRemapping.plist"
 
+# launchd only scans LaunchAgents at login, so load it now to apply the
+# mapping without logging out. Unload first so re-runs pick up changes
+launchctl bootout "gui/$(id -u)/com.local.KeyRemapping" 2> /dev/null
+launchctl bootstrap "gui/$(id -u)" \
+    "$HOME/Library/LaunchAgents/com.local.KeyRemapping.plist"
+
 # Disable the Character Accent Menu and Enable Key Repeat
 defaults write -globalDomain ApplePressAndHoldEnabled -bool false
 
@@ -27,9 +33,6 @@ defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
 
 # Show all file extensions
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
-
-# Disable the “Are you sure you want to open this application?” dialog
-defaults write com.apple.LaunchServices LSQuarantine -bool false 
 
 # Disable auto switching Workspaces?
 defaults write com.apple.dock workspaces-auto-swoosh -bool true
