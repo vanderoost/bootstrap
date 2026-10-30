@@ -270,6 +270,11 @@ cd "$BOOTSTRAP_DIR"
 ./dock-setup.sh
 cd "$HOME"
 
+green_echo "ASSIGN APPS TO DESKTOPS"
+cd "$BOOTSTRAP_DIR"
+./spaces-setup.sh
+cd "$HOME"
+
 green_echo "INSTALLING GITHUB REPOSITORIES"
 while read -r repo; do
     if [ -d "$GIT_DIR/$repo" ]
