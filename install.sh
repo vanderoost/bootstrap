@@ -46,7 +46,7 @@ add_github_key() {
 # Fail when not using bash
 if [ -z "${BASH_VERSION:-}" ]
 then
-  abort "Bash is required to interpret this script."
+  abort "Bash is required to run this script."
 fi
 
 green_echo "STARTING MAC BOOTSTRAP SCRIPT"
@@ -110,9 +110,7 @@ fi
 caffeinate -dims -w "$$" &
 CAFFEINATE_PID=$!
 
-# Only a backstop for the warning above, but a cheap one. `sudo -n -v`
-# refreshes the ticket and can never re-authenticate, so one failed
-# refresh must not take the loop down with it, as `set -e` would
+# Keep sudo privileges alive
 (
     trap - EXIT INT TERM
     set +e
@@ -131,7 +129,6 @@ sudo scutil --set HostName "$HOSTNAME"
 sudo scutil --set LocalHostName "$(echo "$HOSTNAME" \
     | sed -e 's/[^A-Za-z0-9-]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-$//')"
 
-# Turn on Remote Login (incoming SSH) if requested
 if [ "$USE_SSH" = "1" ]; then
     sudo launchctl enable system/com.openssh.sshd
     if ! sudo launchctl print system/com.openssh.sshd &> /dev/null; then
@@ -173,7 +170,7 @@ fi
 
 green_echo "CHECKING GITHUB CLI AUTHENTICATION"
 if ! gh auth status --hostname github.com &> /dev/null; then
-    # Ask for the key scopes up front so a fresh Mac needs one login, not two
+    # Ask for the key scopes up front so a fresh Mac needs only one login
     echo "Logging in to GitHub"
     gh auth login --hostname github.com --git-protocol ssh --web \
         --skip-ssh-key --scopes "$GH_KEY_SCOPES"
@@ -298,13 +295,13 @@ cd "$GIT_DIR/home"
 ./install.sh
 cd "$HOME"
 
-green_echo "STARTING SKHD"
-skhd --start-service
+green_echo "RESTARTING SKHD"
+skhd --restart-service
 
 green_echo "ALL DONE"
 if [ -n "$BUNDLE_FAILED" ]; then
     echo "WARNING: some Brewfile entries failed to install, see the output above," >&2
     echo "then run: brew bundle --file $BOOTSTRAP_DIR/Brewfile" >&2
 fi
+
 echo "Restart the Mac to load the audio driver and the key remapping"
-echo "Give skhd Accessibility access in System Settings > Privacy & Security"
