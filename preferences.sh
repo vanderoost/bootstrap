@@ -25,6 +25,12 @@ launchctl bootstrap "gui/$(id -u)" \
 # Disable the Character Accent Menu and Enable Key Repeat
 defaults write -globalDomain ApplePressAndHoldEnabled -bool false
 
+# Disable Ctrl+Space (60) and Ctrl+Option+Space (61) switching input sources
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 60 \
+    "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>262144</integer></array><key>type</key><string>standard</string></dict></dict>"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 61 \
+    "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>786432</integer></array><key>type</key><string>standard</string></dict></dict>"
+
 # Expand save panel by default
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
 
