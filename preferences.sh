@@ -122,6 +122,6 @@ fi
 
 /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
 
-for app in Finder SystemUIServer WindowManager screencaptureui; do
-    killall "$app" 2> /dev/null
+for app in Finder SystemUIServer WindowManager; do
+    killall "$app" 2> /dev/null || true
 done
