@@ -28,9 +28,6 @@ defaults write -globalDomain ApplePressAndHoldEnabled -bool false
 # Expand save panel by default
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
 
-# Expand print panel by default
-defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
-
 # Show all file extensions
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 
