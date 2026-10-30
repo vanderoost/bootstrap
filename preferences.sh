@@ -88,6 +88,8 @@ defaults write com.apple.finder FXRemoveOldTrashItems -bool true
 
 # Save screenshots to Downloads to keep the Desktop clean
 defaults write com.apple.screencapture location -string "$HOME/Downloads"
+defaults write com.apple.screencapture location-screenshot -string "$HOME/Downloads"
+defaults write com.apple.screencapture location-screenrecording -string "$HOME/Downloads"
 
 # When doing a search, search the current folder by default
 defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
@@ -121,6 +123,8 @@ fi
 
 # APPLY
 
-for app in Finder SystemUIServer WindowManager; do
+/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+
+for app in Finder SystemUIServer WindowManager screencaptureui; do
     killall "$app" 2> /dev/null
 done
