@@ -10,21 +10,17 @@ Automatically configure a new Mac from scratch.
 
 The installer opens a browser twice for a GitHub device-code prompt: once to log in
 and upload this machine's SSH key, and once to hand the key-management scopes back
-afterwards so the everyday token keeps only the default permissions. Re-running the
-installer on an already configured Mac prompts for neither.
+afterwards so the everyday token keeps only the default permissions.
 
-The installer asks for your password once at the start, then installs a
-`/etc/sudoers.d/bootstrap-nopasswd` rule so the rest of the run — Homebrew casks
-especially — never prompts again. The rule is removed when the script exits,
-including on Ctrl-C. While it is in place, anything running as your user can use
-`sudo` without a password, so don't leave the run unattended on a shared machine.
-If a run is killed outright (`kill -9`, a panic), the rule survives; the next run
-replaces and then removes it, or delete it by hand.
+The script is idempotent so you can re-run it as often as you want once it's installed.
+
+The installer asks for your password once at the start, then installs a temporary
+`/etc/sudoers.d/bootstrap-nopasswd` rule so the rest of the run you never have to enter
+your password again.
 
 ## Customization
 
 I recommend customizing the following files to your own needs:
 
 - Brewfile
-- `install.sh`'s `USE_SSH` setting — turns Remote Login (incoming SSH) on or off;
-  defaults to on
+- `install.sh`'s settings at the top of the file
