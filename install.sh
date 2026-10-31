@@ -292,16 +292,59 @@ while read -r repo; do
 done < "$BOOTSTRAP_DIR/github-repos.txt"
 
 green_echo "INITIALIZING DROPBOX"
-open -a Dropbox
-read -r -p "Press enter once you've signed in to Dropbox... " _ < /dev/tty
+DROPBOX_INFO="$HOME/.dropbox/info.json"
+
+# Signed in once Dropbox wrote its info file and the synced folders exist
+dropbox_ready() {
+    local path
+    [ -f "$DROPBOX_INFO" ] || return 1
+    while read -r path; do
+        [ -d "$path" ] || return 1
+    done < <(jq -r '.[].path' "$DROPBOX_INFO" 2> /dev/null)
+}
+
+if dropbox_ready; then
+    echo "All good"
+else
+    open -a Dropbox
+    echo "Waiting for the Dropbox sign-in (press enter to skip)"
+    until dropbox_ready; do
+        if read -r -t 5 _ < /dev/tty; then
+            echo "Skipping, Dropbox folders won't be linked"
+            break
+        fi
+    done
+fi
 
 green_echo "DOWNLOADING AND INSTALLING DOTFILE CONFIGS"
 cd "$GIT_DIR/home"
 ./install.sh
 cd "$HOME"
 
-green_echo "RESTARTING SKHD"
-skhd --restart-service
+green_echo "STARTING SKHD"
+SKHD_PLIST="$HOME/Library/LaunchAgents/com.koekeishiya.skhd.plist"
+
+# --restart-service only works on a loaded service, --start-service loads it
+skhd_start() {
+    if launchctl print "gui/$(id -u)/com.koekeishiya.skhd" &> /dev/null; then
+        skhd --restart-service
+    else
+        skhd --start-service
+    fi
+}
+
+[ -f "$SKHD_PLIST" ] || skhd --install-service
+skhd_start
+
+# skhd needs Accessibility access, which only the user can grant
+sleep 2
+if ! pgrep -x skhd &> /dev/null; then
+    echo "Allow skhd under Accessibility (use + and Cmd+Shift+G to add"
+    echo "$(readlink -f "$(command -v skhd)") if it's not listed)"
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+    read -r -p "Press enter once skhd is allowed... " _ < /dev/tty
+    skhd_start
+fi
 
 green_echo "ALL DONE"
 if [ -n "$BUNDLE_FAILED" ]; then
@@ -310,3 +353,11 @@ if [ -n "$BUNDLE_FAILED" ]; then
 fi
 
 echo "Restart the Mac to load the audio driver and the key remapping"
+
+# Hand the terminal over to a fresh shell that has the new PATH and dotfiles.
+# exec skips the EXIT trap, so release everything by hand first
+if [ -t 1 ] && [ -x /bin/zsh ]; then
+    release_privileges
+    trap - EXIT INT TERM
+    exec /bin/zsh -l < /dev/tty
+fi
