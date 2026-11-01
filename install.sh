@@ -245,6 +245,7 @@ fi
 
 green_echo "INSTALLING ALL HOMEBREW PACKAGES"
 brew trust --formula asmvik/formulae/skhd
+brew trust --formula stripe/stripe-cli/stripe
 
 # mas can no longer sign in by itself, the App Store app has to do it
 if brew bundle check --verbose --file "$BOOTSTRAP_DIR/Brewfile" 2> /dev/null \
