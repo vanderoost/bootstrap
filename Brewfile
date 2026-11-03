@@ -3,6 +3,7 @@ brew "act"
 brew "asmvik/formulae/skhd"
 brew "awscli"
 brew "bfg"
+brew "bitwarden-cli"
 brew "cairo"
 brew "ccache"
 brew "coreutils"
@@ -64,6 +65,8 @@ cask "signal"
 cask "slack"
 cask "tableplus"
 cask "transmission"
+cask "wacom-tablet"
+cask "whatsapp"
 
 mas "Adblock Plus", id: 1432731683
 mas "Bitwarden", id: 1352778147
@@ -71,3 +74,4 @@ mas "Keystroke Pro", id: 1572206224
 mas "MindNode", id: 1289197285
 mas "Telegram", id: 747648890
 mas "The Unarchiver", id: 425424353
+mas "Xcode", id: 497799835

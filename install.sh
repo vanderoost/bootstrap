@@ -254,6 +254,11 @@ if brew bundle check --verbose --file "$BOOTSTRAP_DIR/Brewfile" 2> /dev/null \
     read -r -p "Press enter once you've signed in to the App Store... " _ < /dev/tty
 fi
 
+WACOM_IS_NEW=""
+if ! brew list --cask wacom-tablet &> /dev/null; then
+    WACOM_IS_NEW="yes"
+fi
+
 BUNDLE_FAILED=""
 if ! brew bundle --no-upgrade --file "$BOOTSTRAP_DIR/Brewfile"; then
     BUNDLE_FAILED="yes"
@@ -262,6 +267,18 @@ brew cleanup
 
 # Pin Neovim so it doesn't randomly break
 brew pin neovim
+
+green_echo "SETTING UP XCODE"
+XCODE_DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+
+# A failed Brewfile entry shouldn't stop the rest of the bootstrap
+if [ -d "$XCODE_DEVELOPER_DIR" ]; then
+    sudo xcode-select --switch "$XCODE_DEVELOPER_DIR"
+    sudo xcodebuild -license accept
+    sudo xcodebuild -runFirstLaunch
+else
+    echo "Xcode is not installed, skipping"
+fi
 
 green_echo "SET PREFERENCES"
 "$BOOTSTRAP_DIR/preferences.sh"
@@ -317,6 +334,12 @@ else
     done
 fi
 
+green_echo "SETTING UP THE MAIL ACCOUNTS"
+MAIL_FAILED=""
+if ! "$BOOTSTRAP_DIR/mail-setup.sh"; then
+    MAIL_FAILED="yes"
+fi
+
 green_echo "DOWNLOADING AND INSTALLING DOTFILE CONFIGS"
 cd "$GIT_DIR/home"
 ./install.sh
@@ -347,10 +370,25 @@ if ! pgrep -x skhd &> /dev/null; then
     skhd_start
 fi
 
+# The Wacom driver needs permissions only the user can grant, so ask once
+if [ -n "$WACOM_IS_NEW" ] && brew list --cask wacom-tablet &> /dev/null; then
+    green_echo "ALLOWING THE WACOM DRIVER"
+    echo "Allow the Wacom entries under Accessibility"
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+    read -r -p "Press enter once they're allowed... " _ < /dev/tty
+    echo "Allow the Wacom entries under Input Monitoring"
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+    read -r -p "Press enter once they're allowed... " _ < /dev/tty
+fi
+
 green_echo "ALL DONE"
 if [ -n "$BUNDLE_FAILED" ]; then
     echo "WARNING: some Brewfile entries failed to install, see the output above," >&2
     echo "then run: brew bundle --file $BOOTSTRAP_DIR/Brewfile" >&2
+fi
+if [ -n "$MAIL_FAILED" ]; then
+    echo "WARNING: the Mail accounts weren't set up, see the output above," >&2
+    echo "then run: $BOOTSTRAP_DIR/mail-setup.sh" >&2
 fi
 
 echo "Restart the Mac to load the audio driver and the key remapping"
