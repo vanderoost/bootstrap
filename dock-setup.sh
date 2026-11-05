@@ -45,3 +45,8 @@ defaults write com.apple.dock "mru-spaces" -bool "false"
 defaults write com.apple.dock "workspaces-auto-swoosh" -bool "true"
 
 killall Dock
+
+if ! osascript -e 'tell application "System Events" to tell dock preferences to set autohide to true'; then
+    echo "WARNING: Could not refresh the Dock." >&2
+    echo "Hit Cmd+Option+D twice to reset the available screen space." >&2
+fi

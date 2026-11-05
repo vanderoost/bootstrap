@@ -391,12 +391,5 @@ if [ -n "$MAIL_FAILED" ]; then
     echo "then run: $BOOTSTRAP_DIR/mail-setup.sh" >&2
 fi
 
+echo "Open a new terminal window to load the new PATH and dotfiles"
 echo "Restart the Mac to load the audio driver and the key remapping"
-
-# Hand the terminal over to a fresh shell that has the new PATH and dotfiles.
-# exec skips the EXIT trap, so release everything by hand first
-if [ -t 1 ] && [ -x /bin/zsh ]; then
-    release_privileges
-    trap - EXIT INT TERM
-    exec /bin/zsh -l < /dev/tty
-fi
