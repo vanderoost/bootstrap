@@ -1,10 +1,9 @@
 /Applications/Ghostty.app
-/System/Cryptexes/App/System/Applications/Safari.app
+/Applications/Firefox.app
 /System/Applications/Messages.app
 /System/Applications/Mail.app
 /System/Applications/Calendar.app
 /System/Applications/Reminders.app
 /System/Applications/Notes.app
-/Applications/MindNode Classic.app
 /System/Applications/Podcasts.app
 /Applications/Blender.app
