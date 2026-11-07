@@ -25,3 +25,5 @@ I recommend customizing the following files to your own needs:
 - Brewfile
 - `install.sh`'s settings at the top of the file
 - `spaces-items.txt`, which app goes on which Desktop (Desktop number, bundle ID)
+- `firefox/user.js` and `firefox/userChrome.css`, linked into every Firefox profile
+  by `firefox-setup.sh` (restart Firefox to see changes)

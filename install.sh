@@ -293,6 +293,9 @@ cd "$BOOTSTRAP_DIR"
 ./spaces-setup.sh
 cd "$HOME"
 
+green_echo "LINKING THE FIREFOX USERCHROME.CSS"
+"$BOOTSTRAP_DIR/firefox-setup.sh"
+
 green_echo "INSTALLING GITHUB REPOSITORIES"
 while read -r repo; do
     if [ -d "$GIT_DIR/$repo" ]

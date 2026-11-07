@@ -1,0 +1,4 @@
+/* Firefox UI tweaks, linked into every profile by firefox-setup.sh */
+#sidebar-button, #back-button, #forward-button, #unified-extensions-button {
+  display: none;
+}
