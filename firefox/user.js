@@ -18,7 +18,7 @@ user_pref("browser.ai.control.translations", "blocked");
 // Open a blank page on start
 user_pref("browser.startup.homepage", "chrome://browser/content/blanktab.html");
 
-user_pref("browser.toolbars.bookmarks.visibility", "never")
+user_pref("browser.toolbars.bookmarks.visibility", "never");
 
 user_pref("sidebar.verticalTabs", true);
 user_pref("sidebar.visibility", "hide-sidebar");
