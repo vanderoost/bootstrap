@@ -296,6 +296,9 @@ cd "$HOME"
 green_echo "LINKING THE FIREFOX USERCHROME.CSS"
 "$BOOTSTRAP_DIR/firefox-setup.sh"
 
+green_echo "KEEPING FIGMAAGENT OUT OF THE LOGIN ITEMS"
+"$BOOTSTRAP_DIR/figma-setup.sh"
+
 green_echo "INSTALLING GITHUB REPOSITORIES"
 while read -r repo; do
     if [ -d "$GIT_DIR/$repo" ]
